@@ -42,6 +42,7 @@ class SpatialHash
 
     /**
      * generates hash key
+     * from https://github.com/troufster/spatial (MIT License)
      * @private
      * @param {number} x coordinate
      * @param {number} y coordinate
@@ -49,11 +50,17 @@ class SpatialHash
      */
     _key(x, y)
     {
-        return Math.floor(x / this.cellSize) * this.cellSize + ' ' + Math.floor(y / this.cellSize) * this.cellSize;
+        // return Math.floor(x / this.cellSize) * this.cellSize + ' ' + Math.floor(y / this.cellSize) * this.cellSize;
+        // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
+        return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
+        // var cs = this.cellSize;
+        // var a = Math.floor(x / cs);
+        // var b = Math.floor(y / cs);
+        // return (b << 16) ^ a;
     }
 
     /**
-     * inserts an object into the hash tree
+     * inserts an object into the hash tree (also removes any existing spatialHashes)
      * side effect: adds object.spatialHashes to track existing hashes
      * @param {object} object
      * @param {object} object.AABB bounding box
@@ -64,18 +71,22 @@ class SpatialHash
      */
     insert(object)
     {
-        if (object.spatialHashes && object.spatialHashes.length)
+        if (object.spatialHashes)
         {
-            this.remove(object);
+            if (object.spatialHashes.length)
+            {
+                this.remove(object);
+            }
         }
         else
         {
             object.spatialHashes = [];
         }
+
         var AABB = object.AABB;
-        for (var y = AABB.y; y < AABB.y + AABB.height; y += this.cellSize)
+        for (var y = AABB.y; y <= AABB.y + AABB.height + this.cellSize - 1; y += this.cellSize)
         {
-            for (var x = AABB.x; x < AABB.x + AABB.width; x += this.cellSize)
+            for (var x = AABB.x; x <= AABB.x + AABB.width + this.cellSize - 1; x += this.cellSize)
             {
                 var key = this._key(x, y);
                 var length;
@@ -102,14 +113,7 @@ class SpatialHash
         while (object.spatialHashes.length)
         {
             var entry = object.spatialHashes.pop();
-            if (this.list[entry.key].length === 1)
-            {
-                this.list[entry.key] = null;
-            }
-            else
-            {
-                this.list[entry.key].splice(entry.index, 1);
-            }
+            this.list[entry.key].splice(entry.index, 1);
         }
     }
 
@@ -125,9 +129,9 @@ class SpatialHash
     query(AABB)
     {
         var results = [];
-        for (var y = AABB.y; y < AABB.y + AABB.height; y += this.cellSize)
+        for (var y = AABB.y; y <= AABB.y + AABB.height + this.cellSize - 1; y += this.cellSize)
         {
-            for (var x = AABB.x; x < AABB.x + AABB.width; x += this.cellSize)
+            for (var x = AABB.x; x <= AABB.x + AABB.width + this.cellSize - 1; x += this.cellSize)
             {
                 var list = this.list[this._key(x, y)];
                 if (list)
@@ -152,9 +156,9 @@ class SpatialHash
      */
     queryCallback(AABB, callback)
     {
-        for (var y = AABB.y; y < AABB.y + AABB.height; y += this.cellSize)
+        for (var y = AABB.y; y <= AABB.y + AABB.height; y += this.cellSize)
         {
-            for (var x = AABB.x; x < AABB.x + AABB.width; x += this.cellSize)
+            for (var x = AABB.x; x <= AABB.x + AABB.width; x += this.cellSize)
             {
                 var list = this.list[this._key(x, y)];
                 if (list)
@@ -206,12 +210,13 @@ class SpatialHash
      */
     getLargest()
     {
-        var largest = 0;
+        var largest = 0, object;
         for (var key in this.list)
         {
             if (this.list[key].length > largest)
             {
                 largest = this.list[key].length;
+                object = this.list[key];
             }
         }
         return largest;
