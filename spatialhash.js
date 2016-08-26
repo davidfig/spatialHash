@@ -42,7 +42,6 @@ class SpatialHash
 
     /**
      * generates hash key
-     * from https://github.com/troufster/spatial (MIT License)
      * @private
      * @param {number} x coordinate
      * @param {number} y coordinate
@@ -52,11 +51,12 @@ class SpatialHash
     {
         // return Math.floor(x / this.cellSize) * this.cellSize + ' ' + Math.floor(y / this.cellSize) * this.cellSize;
         // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-        // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-        var cs = this.cellSize;
-        var a = Math.floor(x / cs);
-        var b = Math.floor(y / cs);
-        return (b << 16) ^ a;
+        //  from https://github.com/troufster/spatial (MIT License)
+        // var cs = this.cellSize;
+        // var a = Math.floor(x / cs);
+        // var b = Math.floor(y / cs);
+        // return (b << 16) ^ a;
+        return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
     }
 
     /**
@@ -220,6 +220,32 @@ class SpatialHash
             }
         }
         return largest;
+    }
+
+    /** helper function to evalute the hash table
+     * @param {object} AABB bounding box to search
+     * @param {number} object.AABB.x
+     * @param {number} object.AABB.y
+     * @param {number} object.AABB.width
+     * @param {number} object.AABB.height
+     * @return {number} sparseness percentage
+     */
+    getSparseness(AABB)
+    {
+        var count = 0, total = 0;
+        var xStart = Math.floor(AABB.x / this.cellSize);
+        var yStart = Math.floor(AABB.y / this.cellSize);
+        var xEnd = Math.ceil((AABB.x + AABB.width) / this.cellSize);
+        var yEnd = Math.ceil((AABB.y + AABB.height) / this.cellSize);
+        for (var y = yStart; y < yEnd; y++)
+        {
+            for (var x = xStart; x < xEnd; x++)
+            {
+                count += (this.list[x + ' ' + y] ? 1 : 0);
+                total++;
+            }
+        }
+        return count;
     }
 }
 
