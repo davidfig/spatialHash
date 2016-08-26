@@ -52,11 +52,11 @@ class SpatialHash
     {
         // return Math.floor(x / this.cellSize) * this.cellSize + ' ' + Math.floor(y / this.cellSize) * this.cellSize;
         // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-        return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-        // var cs = this.cellSize;
-        // var a = Math.floor(x / cs);
-        // var b = Math.floor(y / cs);
-        // return (b << 16) ^ a;
+        // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
+        var cs = this.cellSize;
+        var a = Math.floor(x / cs);
+        var b = Math.floor(y / cs);
+        return (b << 16) ^ a;
     }
 
     /**
@@ -84,9 +84,9 @@ class SpatialHash
         }
 
         var AABB = object.AABB;
-        for (var y = AABB.y; y <= AABB.y + AABB.height + this.cellSize - 1; y += this.cellSize)
+        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
         {
-            for (var x = AABB.x; x <= AABB.x + AABB.width + this.cellSize - 1; x += this.cellSize)
+            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
             {
                 var key = this._key(x, y);
                 var length;
@@ -129,9 +129,9 @@ class SpatialHash
     query(AABB)
     {
         var results = [];
-        for (var y = AABB.y; y <= AABB.y + AABB.height + this.cellSize - 1; y += this.cellSize)
+        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
         {
-            for (var x = AABB.x; x <= AABB.x + AABB.width + this.cellSize - 1; x += this.cellSize)
+            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
             {
                 var list = this.list[this._key(x, y)];
                 if (list)
@@ -156,9 +156,9 @@ class SpatialHash
      */
     queryCallback(AABB, callback)
     {
-        for (var y = AABB.y; y <= AABB.y + AABB.height; y += this.cellSize)
+        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
         {
-            for (var x = AABB.x; x <= AABB.x + AABB.width; x += this.cellSize)
+            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
             {
                 var list = this.list[this._key(x, y)];
                 if (list)
