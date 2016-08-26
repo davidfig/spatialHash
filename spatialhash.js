@@ -171,6 +171,51 @@ class SpatialHash
         }
         return false;
     }
+
+    /**
+     * helper function to evaluate hash table
+     * @return {number} the number of buckets in the hash table
+     * */
+    getBuckets()
+    {
+        var count = 0;
+        for (var key in this.list)
+        {
+            count++;
+        }
+        return count;
+    }
+
+    /**
+     * helper function to evaluate hash table
+     * @return {number} the average number of entries in each bucket
+     */
+    getAverageSize()
+    {
+        var total = 0;
+        for (var key in this.list)
+        {
+            total += this.list[key].length;
+        }
+        return total / this.getBuckets();
+    }
+
+    /**
+     * helper function to evaluate the hash table
+     * @return {number} the largest sized bucket
+     */
+    getLargest()
+    {
+        var largest = 0;
+        for (var key in this.list)
+        {
+            if (this.list[key].length > largest)
+            {
+                largest = this.list[key].length;
+            }
+        }
+        return largest;
+    }
 }
 
 module.exports = SpatialHash;
