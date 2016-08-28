@@ -41,25 +41,6 @@ class SpatialHash
     }
 
     /**
-     * generates hash key
-     * @private
-     * @param {number} x coordinate
-     * @param {number} y coordinate
-     * @return {string} hash key
-     */
-    _key(x, y)
-    {
-        // return Math.floor(x / this.cellSize) * this.cellSize + ' ' + Math.floor(y / this.cellSize) * this.cellSize;
-        // return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-        //  from https://github.com/troufster/spatial (MIT License)
-        // var cs = this.cellSize;
-        // var a = Math.floor(x / cs);
-        // var b = Math.floor(y / cs);
-        // return (b << 16) ^ a;
-        return Math.floor(x / this.cellSize) + ' ' + Math.floor(y / this.cellSize);
-    }
-
-    /**
      * inserts an object into the hash tree (also removes any existing spatialHashes)
      * side effect: adds object.spatialHashes to track existing hashes
      * @param {object} object
@@ -71,36 +52,46 @@ class SpatialHash
      */
     insert(object)
     {
-        if (object.spatialHashes)
+        if (!object.spatial)
         {
-            if (object.spatialHashes.length)
+            object.spatial = {hashes: []};
+        }
+        var AABB = object.AABB;
+        var xStart = Math.floor(AABB.x / this.cellSize);
+        xStart = xStart < 0 ? 0 : xStart;
+        var yStart = Math.floor(AABB.y / this.cellSize);
+        yStart = yStart < 0 ? 0 : yStart;
+        var xEnd = Math.floor((AABB.x + AABB.width) / this.cellSize);
+        xEnd = xEnd >= this.width ? this.width - 1 : xEnd;
+        var yEnd = Math.floor((AABB.y + AABB.height) / this.cellSize);
+        yEnd = yEnd >= this.height ? this.height - 1 : yEnd;
+        // only remove and insert if mapping has changed
+        if (object.spatial.xStart !== xStart || object.spatial.yStart !== yStart || object.spatial.xEnd !== xEnd || object.spatial.yEnd !== yEnd)
+        {
+            if (object.spatial.maps.length)
             {
                 this.remove(object);
             }
-        }
-        else
-        {
-            object.spatialHashes = [];
-        }
-
-        var AABB = object.AABB;
-        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
-        {
-            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
+            for (var y = yStart; y <= yEnd; y++)
             {
-                var key = this._key(x, y);
-                var length;
-                if (!this.list[key])
+                for (var x = xStart; x <= xEnd; x++)
                 {
-                    this.list[key] = [object];
-                    length = 1;
+                    var key = x + ' ' + y;
+                    if (!this.list[key])
+                    {
+                        this.list[key] = [object];
+                    }
+                    else
+                    {
+                        this.list[key].push(object);
+                    }
+                    object.spatial.hashes.push({list: list, key: key});
                 }
-                else
-                {
-                    length = this.list[key].push(object);
-                }
-                object.spatialHashes.push({key: key, index: length - 1});
             }
+            object.spatial.xStart = xStart;
+            object.spatial.yStart = yStart;
+            object.spatial.xEnd = xEnd;
+            object.spatial.yEnd = yEnd;
         }
     }
 
@@ -110,10 +101,18 @@ class SpatialHash
      */
     remove(object)
     {
-        while (object.spatialHashes.length)
+        while (object.spatial.hashes.length)
         {
-            var entry = object.spatialHashes.pop();
-            this.list[entry.key].splice(entry.index, 1);
+            var entry = object.spatial.hashes.pop();
+            if (entry.list.length === 1)
+            {
+                this.list[entry.key] = null;
+            }
+            else
+            {
+                var index = entry.list.indexOf(object);
+                entry.list.splice(index, 1);
+            }
         }
     }
 
@@ -129,14 +128,22 @@ class SpatialHash
     query(AABB)
     {
         var results = [];
-        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
+        var xStart = Math.floor(AABB.x / this.cellSize);
+        xStart = xStart < 0 ? 0 : xStart;
+        var yStart = Math.floor(AABB.y / this.cellSize);
+        yStart = yStart < 0 ? 0 : yStart;
+        var xEnd = Math.floor((AABB.x + AABB.width) / this.cellSize);
+        xEnd = xEnd >= this.width ? this.width - 1 : xEnd;
+        var yEnd = Math.floor((AABB.y + AABB.height) / this.cellSize);
+        yEnd = yEnd >= this.height ? this.height - 1 : yEnd;
+        for (var y = yStart; y <= yEnd; y++)
         {
-            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
+            for (var x = xStart; x <= xEnd; x++)
             {
-                var list = this.list[this._key(x, y)];
-                if (list)
+                var entry = this.list[x + ' ' + y];
+                if (entry)
                 {
-                    results = results.concat(list);
+                    results = results.concat(entry.list);
                 }
             }
         }
@@ -156,16 +163,24 @@ class SpatialHash
      */
     queryCallback(AABB, callback)
     {
-        for (var y = AABB.y, _y = AABB.y + AABB.height + this.cellSize; y < _y; y += this.cellSize)
+        var xStart = Math.floor(AABB.x / this.cellSize);
+        xStart = xStart < 0 ? 0 : xStart;
+        var yStart = Math.floor(AABB.y / this.cellSize);
+        yStart = yStart < 0 ? 0 : yStart;
+        var xEnd = Math.floor((AABB.x + AABB.width) / this.cellSize);
+        xEnd = xEnd >= this.width ? this.width - 1 : xEnd;
+        var yEnd = Math.floor((AABB.y + AABB.height) / this.cellSize);
+        yEnd = yEnd >= this.height ? this.height - 1 : yEnd;
+        for (var y = yStart; y <= yEnd; y++)
         {
-            for (var x = AABB.x, _x = AABB.x + AABB.width + this.cellSize; x < _x; x += this.cellSize)
+            for (var x = xStart; x <= xEnd; x++)
             {
-                var list = this.list[this._key(x, y)];
-                if (list)
+                var entry = this.list[x + ' ' + y];
+                if (entry)
                 {
-                    for (var i = 0; i < list.length; i++)
+                    for (var i = 0; i < entry.list.length; i++)
                     {
-                        if (callback(list[i]))
+                        if (callback(entry.list[i]))
                         {
                             return true;
                         }
